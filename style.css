@@ -1,0 +1,19 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom adjustments for canvas container to ensure perfect fit */
+#canvasContainer {
+  overflow: hidden;
+}
+
+/* Make sure fabric.js wrappers take full height/width correctly */
+.canvas-container {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.canvas-container canvas {
+  width: 100% !important;
+  height: 100% !important;
+}

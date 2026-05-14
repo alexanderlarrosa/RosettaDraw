@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>App Lápiz - Web de Dibujo</title>
+    <link href="/style.css" rel="stylesheet">
+  </head>
+  <body class="bg-gray-50 h-screen w-screen overflow-hidden flex flex-col font-sans">
+    
+    <!-- Toolbar -->
+    <header class="bg-white shadow-md z-10 flex flex-wrap items-center justify-between px-6 py-3 shrink-0">
+      <div class="flex items-center gap-4">
+        <h1 class="text-xl font-bold text-gray-800 tracking-tight">App Lápiz</h1>
+        
+        <!-- Status Indicator -->
+        <div id="statusIndicator" class="text-sm px-3 py-1 bg-green-100 text-green-700 rounded-full font-medium transition-colors">
+          Listo
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <!-- Tools -->
+        <div class="flex items-center gap-1 bg-gray-100 p-1 rounded-lg">
+          <button id="btnPencil" class="px-4 py-2 text-sm font-medium rounded-md bg-white shadow-sm text-blue-600 transition-colors" title="Lápiz Normal">✏️ Lápiz</button>
+          <button id="btnSelect" class="px-4 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-200 transition-colors" title="Seleccionar/Borrar">👆 Seleccionar</button>
+        </div>
+        
+        <div class="h-6 w-px bg-gray-300 mx-2"></div>
+
+        <!-- Shapes & Text -->
+        <div class="flex items-center gap-1 bg-gray-100 p-1 rounded-lg">
+          <button id="btnRect" class="px-3 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-200 transition-colors" title="Rectángulo">⬜</button>
+          <button id="btnCircle" class="px-3 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-200 transition-colors" title="Círculo">⭕</button>
+          <button id="btnText" class="px-3 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-200 transition-colors" title="Texto">T</button>
+        </div>
+        
+        <div class="h-6 w-px bg-gray-300 mx-2"></div>
+
+        <!-- Magic Pen -->
+        <button id="btnMagic" class="px-4 py-2 text-sm font-bold rounded-lg bg-gradient-to-r from-purple-500 to-indigo-600 text-white shadow hover:from-purple-600 hover:to-indigo-700 transition-all hover:scale-105" title="Lápiz Mágico (Dibuja formas o escribe)">
+          ✨ Lápiz Mágico
+        </button>
+
+        <div class="h-6 w-px bg-gray-300 mx-2"></div>
+
+        <!-- File -->
+        <div class="flex items-center gap-2">
+          <button id="btnNew" class="px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-md transition-colors">Nuevo</button>
+          <button id="btnSave" class="px-4 py-2 text-sm font-medium bg-gray-800 text-white rounded-md hover:bg-gray-700 transition-colors">Guardar PNG</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Canvas Container -->
+    <main id="canvasContainer" class="flex-grow w-full relative bg-gray-100 cursor-crosshair">
+      <canvas id="c"></canvas>
+    </main>
+
+    <script type="module" src="/main.js"></script>
+  </body>
+</html>
