@@ -123,6 +123,26 @@
         </div>
         <input type="range" id="eraserWidth" min="5" max="150" value="30" class="w-full accent-white cursor-pointer">
       </div>
+
+      <div class="h-px w-full bg-white/10"></div>
+
+      <!-- Text Properties -->
+      <div id="textPropsContainer" class="flex flex-col gap-3">
+        <div class="flex items-center justify-between">
+          <label class="text-sm font-medium text-zinc-300 flex items-center gap-2">
+            <i data-lucide="type" class="w-4 h-4"></i> Texto
+          </label>
+          <label class="flex items-center gap-1.5 text-xs text-zinc-400 cursor-pointer hover:text-white transition-colors" title="Si está activo, el lápiz mágico creará texto de este tamaño siempre">
+            <input type="checkbox" id="fixedTextSize" class="rounded border-zinc-600 bg-zinc-800 text-purple-500 focus:ring-purple-500/50">
+            Tamaño Fijo
+          </label>
+        </div>
+        <div class="flex items-center justify-between">
+          <label for="textSize" class="text-xs text-zinc-500">Tamaño</label>
+          <span id="textSizeVal" class="text-xs font-mono text-zinc-400 bg-black/30 px-2 py-1 rounded-md">40px</span>
+        </div>
+        <input type="range" id="textSize" min="10" max="150" value="40" class="w-full accent-purple-500 cursor-pointer">
+      </div>
     </aside>
 
     <!-- Main Toolbar Dock (Bottom Center) -->

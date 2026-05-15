@@ -31,6 +31,9 @@ const strokeWidthContainer = document.getElementById('strokeWidthContainer');
 const eraserWidthInput = document.getElementById('eraserWidth');
 const eraserWidthVal = document.getElementById('eraserWidthVal');
 const eraserWidthContainer = document.getElementById('eraserWidthContainer');
+const textSizeInput = document.getElementById('textSize');
+const textSizeVal = document.getElementById('textSizeVal');
+const fixedTextSizeInput = document.getElementById('fixedTextSize');
 
 // --- State ---
 let currentTool = 'pencil'; // pencil, select, magic, rect, circle, triangle, line, arrow, text
@@ -100,7 +103,7 @@ const canvas = new fabric.Canvas('c', {
   isDrawingMode: true,
   width: canvasContainer.clientWidth,
   height: canvasContainer.clientHeight,
-  backgroundColor: '#f3f4f6' // tailwind gray-100
+  backgroundColor: null
 });
 
 // Canvas Setup
@@ -347,6 +350,22 @@ eraserWidthInput.addEventListener('input', () => {
   }
 });
 
+textSizeInput.addEventListener('input', () => {
+  const val = textSizeInput.value;
+  textSizeVal.textContent = val + 'px';
+  
+  const activeObj = canvas.getActiveObject();
+  if (activeObj && ['i-text', 'text'].includes(activeObj.type)) {
+    activeObj.set({ 
+      fontSize: parseInt(val, 10),
+      scaleX: 1,
+      scaleY: 1
+    });
+    canvas.renderAll();
+    saveHistory();
+  }
+});
+
 // Actualizar barra de herramientas cuando se selecciona un objeto
 canvas.on('selection:created', handleSelection);
 canvas.on('selection:updated', handleSelection);
@@ -355,8 +374,11 @@ function handleSelection(e) {
   const obj = e.selected[0];
   if (!obj) return;
 
-  if (obj.type === 'i-text') {
+  if (obj.type === 'i-text' || obj.type === 'text') {
     strokeColorInput.value = obj.fill || '#000000';
+    const actualFontSize = Math.round(obj.fontSize * obj.scaleY);
+    textSizeInput.value = actualFontSize;
+    textSizeVal.textContent = actualFontSize + 'px';
   } else {
     if (obj.stroke) strokeColorInput.value = obj.stroke;
     if (obj.strokeWidth) {
@@ -412,10 +434,9 @@ canvas.on('mouse:down', (e) => {
     origY = pointer.y;
 
     if (currentTool === 'text') {
-      // El texto no se arrastra, se crea directo en el click
       const textObj = new fabric.IText('Texto...', {
         left: origX, top: origY, fontFamily: 'sans-serif', fill: strokeColorInput.value,
-        fontSize: Math.max(32, parseInt(strokeWidthInput.value, 10) * 8), originX: 'left', originY: 'top'
+        fontSize: parseInt(textSizeInput.value, 10), originX: 'left', originY: 'top', lineHeight: 1
       });
       canvas.add(textObj);
       canvas.setActiveObject(textObj);
@@ -600,9 +621,16 @@ async function processMagicPaths() {
     if (candidates.length > 0) {
       const bestText = candidates[0].trim();
       if (bestText.length > 0) {
+        let finalFontSize = Math.max(24, bBox.height);
+        if (fixedTextSizeInput.checked) {
+          finalFontSize = parseInt(textSizeInput.value, 10);
+        }
+
         const textObj = new fabric.IText(bestText, {
           left: bBox.left, top: bBox.top, fontFamily: 'sans-serif',
-          fill: strokeColorInput.value, fontSize: Math.max(24, bBox.height * 0.8)
+          fill: strokeColorInput.value, 
+          fontSize: finalFontSize,
+          lineHeight: 1 // Reduce el espaciado interno (arriba/abajo) del cuadro de texto
         });
         
         isHistoryProcessing = true;
