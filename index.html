@@ -31,7 +31,7 @@
     <!-- Canvas Container (Background) -->
     <main id="canvasContainer" class="fixed inset-0 w-full h-full cursor-crosshair z-0">
       <!-- We can add a subtle dot pattern to the background -->
-      <div class="absolute inset-0 pointer-events-none opacity-50" style="background-image: radial-gradient(#cbd5e1 1px, transparent 1px); background-size: 20px 20px;"></div>
+      <div id="gridBackground" class="absolute inset-0 pointer-events-none opacity-50 transition-transform origin-top-left" style="background-image: radial-gradient(#cbd5e1 1px, transparent 1px); background-size: 20px 20px;"></div>
       <canvas id="c"></canvas>
     </main>
 
@@ -71,8 +71,8 @@
             <i data-lucide="paint-bucket" class="w-4 h-4"></i> Relleno
           </label>
           <div class="flex items-center gap-2">
-            <label class="flex items-center gap-1 text-xs text-zinc-400 cursor-pointer hover:text-white" title="Transparente">
-              <input type="checkbox" id="fillTransparent" checked class="rounded border-zinc-600 bg-zinc-800 text-purple-500 focus:ring-purple-500/50">
+            <label class="flex items-center gap-1 text-xs text-zinc-400 cursor-pointer hover:text-white" title="Rellenar figura">
+              <input type="checkbox" id="fillEnabled" class="rounded border-zinc-600 bg-zinc-800 text-purple-500 focus:ring-purple-500/50">
             </label>
             <div class="relative w-7 h-7 rounded-full overflow-hidden border border-white/20">
               <input type="color" id="fillColor" value="#ffffff" class="absolute -inset-2 w-12 h-12 cursor-pointer disabled:opacity-50">
@@ -130,6 +130,9 @@
         
         <div class="w-px h-6 bg-white/10 mx-2"></div>
         
+        <button id="btnResetView" class="p-2 text-zinc-400 hover:text-white hover:bg-white/10 rounded-xl transition-colors" title="Centrar Vista (Zoom 100%)">
+          <i data-lucide="focus" class="w-4 h-4"></i>
+        </button>
         <button id="btnNew" class="px-3 py-1.5 text-sm font-medium text-red-400 hover:text-red-300 hover:bg-red-400/10 rounded-xl transition-colors">
           Limpiar
         </button>

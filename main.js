@@ -17,6 +17,7 @@ const btnLine = document.getElementById('btnLine');
 const btnArrow = document.getElementById('btnArrow');
 const btnText = document.getElementById('btnText');
 const btnMagic = document.getElementById('btnMagic');
+const btnResetView = document.getElementById('btnResetView');
 const btnNew = document.getElementById('btnNew');
 const btnSaveProject = document.getElementById('btnSaveProject');
 const btnSave = document.getElementById('btnSave');
@@ -24,11 +25,12 @@ const btnImport = document.getElementById('btnImport');
 const fileInput = document.getElementById('fileInput');
 const btnUndo = document.getElementById('btnUndo');
 const btnRedo = document.getElementById('btnRedo');
+const gridBackground = document.getElementById('gridBackground');
 
 // Properties Toolbar
 const strokeColorInput = document.getElementById('strokeColor');
 const fillColorInput = document.getElementById('fillColor');
-const fillTransparentInput = document.getElementById('fillTransparent');
+const fillEnabledInput = document.getElementById('fillEnabled');
 const strokeWidthInput = document.getElementById('strokeWidth');
 const strokeWidthVal = document.getElementById('strokeWidthVal');
 const strokeWidthContainer = document.getElementById('strokeWidthContainer');
@@ -107,7 +109,8 @@ const canvas = new fabric.Canvas('c', {
   isDrawingMode: true,
   width: canvasContainer.clientWidth,
   height: canvasContainer.clientHeight,
-  backgroundColor: null
+  backgroundColor: null,
+  fireMiddleClick: true
 });
 
 // Canvas Setup
@@ -133,6 +136,68 @@ function setStatus(text, type = 'normal') {
 }
 
 setStatus('Lápiz Mágico preparado.', 'magic');
+
+function updateBackground() {
+  if (!gridBackground) return;
+  const vpt = canvas.viewportTransform;
+  const zoom = canvas.getZoom();
+  gridBackground.style.backgroundPosition = `${vpt[4]}px ${vpt[5]}px`;
+  gridBackground.style.backgroundSize = `${20 * zoom}px ${20 * zoom}px`;
+}
+
+// --- Zoom & Pan Logic ---
+let isPanning = false;
+let lastPosX = 0;
+let lastPosY = 0;
+
+canvas.on('mouse:wheel', function(opt) {
+  var delta = opt.e.deltaY;
+  var zoom = canvas.getZoom();
+  zoom *= 0.999 ** delta;
+  if (zoom > 20) zoom = 20;
+  if (zoom < 0.05) zoom = 0.05;
+  canvas.zoomToPoint({ x: opt.e.offsetX, y: opt.e.offsetY }, zoom);
+  opt.e.preventDefault();
+  opt.e.stopPropagation();
+  updateBackground();
+});
+
+// We modify mouse:down/move/up for panning
+// These are added as separate listeners to not interfere with drawing tools.
+canvas.on('mouse:down', function(opt) {
+  var evt = opt.e;
+  if (evt.altKey || evt.button === 1 || evt.button === 4) { // 1 is middle click in standard, sometimes 4 in some browsers
+    if (evt.button === 1 || evt.button === 4) evt.preventDefault();
+    isPanning = true;
+    canvas.isDrawingMode = false;
+    canvas.selection = false;
+    canvas.defaultCursor = 'grab';
+    lastPosX = evt.clientX;
+    lastPosY = evt.clientY;
+  }
+});
+
+canvas.on('mouse:move', function(opt) {
+  if (isPanning) {
+    var e = opt.e;
+    var vpt = canvas.viewportTransform;
+    vpt[4] += e.clientX - lastPosX;
+    vpt[5] += e.clientY - lastPosY;
+    canvas.requestRenderAll();
+    lastPosX = e.clientX;
+    lastPosY = e.clientY;
+    updateBackground();
+  }
+});
+
+canvas.on('mouse:up', function(opt) {
+  if (isPanning) {
+    canvas.setViewportTransform(canvas.viewportTransform);
+    isPanning = false;
+    // Restore tools
+    setTool(currentTool, document.querySelector('.active-tool-btn') || btnPencil, currentTool !== 'select' && currentTool !== 'rect' && currentTool !== 'circle' && currentTool !== 'triangle' && currentTool !== 'line' && currentTool !== 'arrow' && currentTool !== 'text');
+  }
+});
 
 function updateActiveButton(activeBtn) {
   const tools = [btnPencil, btnEraser, btnSelect, btnMagic, btnRect, btnCircle, btnTriangle, btnLine, btnArrow, btnText];
@@ -284,6 +349,12 @@ window.addEventListener('keydown', (e) => {
   }
 });
 
+btnResetView.addEventListener('click', () => {
+  canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
+  updateBackground();
+  setStatus('Vista centrada', 'action');
+});
+
 btnNew.addEventListener('click', () => {
   if(confirm('¿Estás seguro que deseas limpiar el lienzo?')) {
     isHistoryProcessing = true;
@@ -376,7 +447,7 @@ fileInput.addEventListener('change', (e) => {
 
 // --- Properties Logic ---
 function getFillColor() {
-  return fillTransparentInput.checked ? 'transparent' : fillColorInput.value;
+  return fillEnabledInput.checked ? fillColorInput.value : 'transparent';
 }
 
 function updateSelectedObjects() {
@@ -405,8 +476,8 @@ strokeColorInput.addEventListener('input', () => {
 
 fillColorInput.addEventListener('input', updateSelectedObjects);
 
-fillTransparentInput.addEventListener('change', () => {
-  fillColorInput.disabled = fillTransparentInput.checked;
+fillEnabledInput.addEventListener('change', () => {
+  fillColorInput.disabled = !fillEnabledInput.checked;
   updateSelectedObjects();
 });
 
@@ -464,10 +535,10 @@ function handleSelection(e) {
       strokeWidthVal.textContent = obj.strokeWidth + 'px';
     }
     if (obj.fill === 'transparent' || !obj.fill) {
-      fillTransparentInput.checked = true;
+      fillEnabledInput.checked = false;
       fillColorInput.disabled = true;
     } else {
-      fillTransparentInput.checked = false;
+      fillEnabledInput.checked = true;
       fillColorInput.disabled = false;
       fillColorInput.value = obj.fill;
     }
@@ -492,6 +563,7 @@ let strokeStartTime = 0;
 
 // Lógica de Mouse en el Canvas
 canvas.on('mouse:down', (e) => {
+  if (isPanning) return;
   const pointer = canvas.getPointer(e.e);
   
   if (isMagicMode) {
