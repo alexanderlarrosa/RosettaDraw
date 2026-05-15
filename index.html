@@ -5,58 +5,178 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>App Lápiz - Web de Dibujo</title>
     <link href="/style.css" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+      /* Custom styles to augment Tailwind */
+      .glass-panel {
+        background: rgba(24, 24, 27, 0.85);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 10px 40px -10px rgba(0,0,0,0.3);
+      }
+      .tool-btn {
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      .tool-btn:hover {
+        transform: translateY(-2px);
+      }
+      .tool-btn:active {
+        transform: translateY(0);
+      }
+    </style>
   </head>
-  <body class="bg-gray-50 h-screen w-screen overflow-hidden flex flex-col font-sans">
+  <body class="bg-gray-100 h-screen w-screen overflow-hidden font-sans text-gray-100 selection:bg-purple-500/30">
     
-    <!-- Toolbar -->
-    <header class="bg-white shadow-md z-10 flex flex-wrap items-center justify-between px-6 py-3 shrink-0">
-      <div class="flex items-center gap-4">
-        <h1 class="text-xl font-bold text-gray-800 tracking-tight">App Lápiz</h1>
-        
-        <!-- Status Indicator -->
-        <div id="statusIndicator" class="text-sm px-3 py-1 bg-green-100 text-green-700 rounded-full font-medium transition-colors">
+    <!-- Canvas Container (Background) -->
+    <main id="canvasContainer" class="fixed inset-0 w-full h-full cursor-crosshair z-0">
+      <!-- We can add a subtle dot pattern to the background -->
+      <div class="absolute inset-0 pointer-events-none opacity-50" style="background-image: radial-gradient(#cbd5e1 1px, transparent 1px); background-size: 20px 20px;"></div>
+      <canvas id="c"></canvas>
+    </main>
+
+    <!-- Top Navigation -->
+    <header class="fixed top-4 left-4 right-4 z-10 flex justify-between items-start pointer-events-none">
+      <!-- Brand & Status -->
+      <div class="glass-panel rounded-2xl px-4 py-3 flex flex-col gap-1 pointer-events-auto">
+        <h1 class="text-lg font-bold text-white tracking-tight flex items-center gap-2">
+          <i data-lucide="pen-tool" class="w-5 h-5 text-purple-400"></i>
+          App Lápiz
+        </h1>
+        <div id="statusIndicator" class="text-xs text-green-400 font-medium flex items-center gap-1.5">
+          <div class="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></div>
           Listo
         </div>
       </div>
 
-      <div class="flex items-center gap-2">
-        <!-- Tools -->
-        <div class="flex items-center gap-1 bg-gray-100 p-1 rounded-lg">
-          <button id="btnPencil" class="px-4 py-2 text-sm font-medium rounded-md bg-white shadow-sm text-blue-600 transition-colors" title="Lápiz Normal">✏️ Lápiz</button>
-          <button id="btnSelect" class="px-4 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-200 transition-colors" title="Seleccionar/Borrar">👆 Seleccionar</button>
-        </div>
-        
-        <div class="h-6 w-px bg-gray-300 mx-2"></div>
-
-        <!-- Shapes & Text -->
-        <div class="flex items-center gap-1 bg-gray-100 p-1 rounded-lg">
-          <button id="btnRect" class="px-3 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-200 transition-colors" title="Rectángulo">⬜</button>
-          <button id="btnCircle" class="px-3 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-200 transition-colors" title="Círculo">⭕</button>
-          <button id="btnText" class="px-3 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-200 transition-colors" title="Texto">T</button>
-        </div>
-        
-        <div class="h-6 w-px bg-gray-300 mx-2"></div>
-
-        <!-- Magic Pen -->
-        <button id="btnMagic" class="px-4 py-2 text-sm font-bold rounded-lg bg-gradient-to-r from-purple-500 to-indigo-600 text-white shadow hover:from-purple-600 hover:to-indigo-700 transition-all hover:scale-105" title="Lápiz Mágico (Dibuja formas o escribe)">
-          ✨ Lápiz Mágico
+      <!-- Actions -->
+      <div class="glass-panel rounded-2xl p-1.5 flex items-center gap-1 pointer-events-auto">
+        <button id="btnUndo" class="p-2.5 text-zinc-400 hover:text-white hover:bg-white/10 rounded-xl transition-colors disabled:opacity-30 disabled:hover:bg-transparent" title="Deshacer (Ctrl+Z)">
+          <i data-lucide="undo-2" class="w-5 h-5"></i>
         </button>
-
-        <div class="h-6 w-px bg-gray-300 mx-2"></div>
-
-        <!-- File -->
-        <div class="flex items-center gap-2">
-          <button id="btnNew" class="px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-md transition-colors">Nuevo</button>
-          <button id="btnSave" class="px-4 py-2 text-sm font-medium bg-gray-800 text-white rounded-md hover:bg-gray-700 transition-colors">Guardar PNG</button>
-        </div>
+        <button id="btnRedo" class="p-2.5 text-zinc-400 hover:text-white hover:bg-white/10 rounded-xl transition-colors disabled:opacity-30 disabled:hover:bg-transparent" title="Rehacer (Ctrl+Y)">
+          <i data-lucide="redo-2" class="w-5 h-5"></i>
+        </button>
+        
+        <div class="w-px h-6 bg-white/10 mx-1"></div>
+        
+        <button id="btnNew" class="px-4 py-2 text-sm font-medium text-red-400 hover:text-red-300 hover:bg-red-400/10 rounded-xl transition-colors">
+          Limpiar
+        </button>
+        <button id="btnSave" class="px-4 py-2 text-sm font-medium bg-white text-black hover:bg-gray-200 rounded-xl transition-colors ml-1 shadow-sm flex items-center gap-2">
+          <i data-lucide="download" class="w-4 h-4"></i> Exportar
+        </button>
       </div>
     </header>
 
-    <!-- Canvas Container -->
-    <main id="canvasContainer" class="flex-grow w-full relative bg-gray-100 cursor-crosshair">
-      <canvas id="c"></canvas>
-    </main>
+    <!-- Properties Sidebar (Left) -->
+    <aside class="fixed top-24 left-4 z-10 glass-panel rounded-2xl p-4 w-64 pointer-events-auto flex flex-col gap-6">
+      <div class="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Propiedades</div>
+      
+      <!-- Colors -->
+      <div class="flex flex-col gap-4">
+        <div class="flex items-center justify-between">
+          <label for="strokeColor" class="text-sm font-medium text-zinc-300 flex items-center gap-2">
+            <i data-lucide="palette" class="w-4 h-4"></i> Borde
+          </label>
+          <div class="relative w-8 h-8 rounded-full overflow-hidden border-2 border-white/20 shadow-inner">
+            <input type="color" id="strokeColor" value="#000000" class="absolute -inset-2 w-12 h-12 cursor-pointer">
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between">
+          <label for="fillColor" class="text-sm font-medium text-zinc-300 flex items-center gap-2">
+            <i data-lucide="paint-bucket" class="w-4 h-4"></i> Relleno
+          </label>
+          <div class="flex items-center gap-3">
+            <label class="flex items-center gap-1.5 text-xs text-zinc-400 cursor-pointer hover:text-white transition-colors" title="Fondo transparente">
+              <input type="checkbox" id="fillTransparent" checked class="rounded border-zinc-600 bg-zinc-800 text-purple-500 focus:ring-purple-500/50">
+              Vacío
+            </label>
+            <div class="relative w-8 h-8 rounded-full overflow-hidden border-2 border-white/20 shadow-inner">
+              <input type="color" id="fillColor" value="#ffffff" class="absolute -inset-2 w-12 h-12 cursor-pointer disabled:opacity-50">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="h-px w-full bg-white/10"></div>
+
+      <!-- Stroke Width -->
+      <div id="strokeWidthContainer" class="flex flex-col gap-3">
+        <div class="flex items-center justify-between">
+          <label for="strokeWidth" class="text-sm font-medium text-zinc-300 flex items-center gap-2">
+            <i data-lucide="scaling" class="w-4 h-4"></i> Grosor
+          </label>
+          <span id="strokeWidthVal" class="text-xs font-mono text-zinc-400 bg-black/30 px-2 py-1 rounded-md">3px</span>
+        </div>
+        <input type="range" id="strokeWidth" min="1" max="50" value="3" class="w-full accent-purple-500 cursor-pointer">
+      </div>
+
+      <!-- Eraser Width -->
+      <div id="eraserWidthContainer" class="hidden flex-col gap-3">
+        <div class="flex items-center justify-between">
+          <label for="eraserWidth" class="text-sm font-medium text-zinc-300 flex items-center gap-2">
+            <i data-lucide="eraser" class="w-4 h-4"></i> Tamaño Goma
+          </label>
+          <span id="eraserWidthVal" class="text-xs font-mono text-zinc-400 bg-black/30 px-2 py-1 rounded-md">30px</span>
+        </div>
+        <input type="range" id="eraserWidth" min="5" max="150" value="30" class="w-full accent-white cursor-pointer">
+      </div>
+    </aside>
+
+    <!-- Main Toolbar Dock (Bottom Center) -->
+    <div class="fixed bottom-6 left-1/2 -translate-x-1/2 z-20 pointer-events-none">
+      <div class="glass-panel rounded-full p-2 flex items-center gap-1.5 pointer-events-auto">
+        
+        <!-- Tools -->
+        <button id="btnSelect" class="tool-btn p-3 rounded-full text-zinc-400 hover:text-white hover:bg-white/10 transition-all flex flex-col items-center gap-1 group" title="Seleccionar">
+          <i data-lucide="mouse-pointer-2" class="w-5 h-5 group-hover:scale-110 transition-transform"></i>
+        </button>
+        <button id="btnPencil" class="tool-btn p-3 rounded-full bg-white/10 text-white shadow-sm transition-all flex flex-col items-center gap-1 group" title="Lápiz Normal">
+          <i data-lucide="pen-line" class="w-5 h-5 group-hover:scale-110 transition-transform"></i>
+        </button>
+        <button id="btnEraser" class="tool-btn p-3 rounded-full text-zinc-400 hover:text-white hover:bg-white/10 transition-all flex flex-col items-center gap-1 group" title="Goma de Borrar">
+          <i data-lucide="eraser" class="w-5 h-5 group-hover:scale-110 transition-transform"></i>
+        </button>
+
+        <div class="w-px h-8 bg-white/10 mx-1"></div>
+
+        <!-- Shapes -->
+        <button id="btnLine" class="tool-btn p-3 rounded-full text-zinc-400 hover:text-white hover:bg-white/10 transition-all group" title="Línea">
+          <i data-lucide="minus" class="w-5 h-5 group-hover:scale-110 transition-transform"></i>
+        </button>
+        <button id="btnRect" class="tool-btn p-3 rounded-full text-zinc-400 hover:text-white hover:bg-white/10 transition-all group" title="Rectángulo">
+          <i data-lucide="square" class="w-5 h-5 group-hover:scale-110 transition-transform"></i>
+        </button>
+        <button id="btnCircle" class="tool-btn p-3 rounded-full text-zinc-400 hover:text-white hover:bg-white/10 transition-all group" title="Círculo">
+          <i data-lucide="circle" class="w-5 h-5 group-hover:scale-110 transition-transform"></i>
+        </button>
+        <button id="btnTriangle" class="tool-btn p-3 rounded-full text-zinc-400 hover:text-white hover:bg-white/10 transition-all group" title="Triángulo">
+          <i data-lucide="triangle" class="w-5 h-5 group-hover:scale-110 transition-transform"></i>
+        </button>
+        <button id="btnArrow" class="tool-btn p-3 rounded-full text-zinc-400 hover:text-white hover:bg-white/10 transition-all group" title="Flecha">
+          <i data-lucide="arrow-up-right" class="w-5 h-5 group-hover:scale-110 transition-transform"></i>
+        </button>
+        <button id="btnText" class="tool-btn p-3 rounded-full text-zinc-400 hover:text-white hover:bg-white/10 transition-all group" title="Texto">
+          <i data-lucide="type" class="w-5 h-5 group-hover:scale-110 transition-transform"></i>
+        </button>
+
+        <div class="w-px h-8 bg-white/10 mx-1"></div>
+
+        <!-- Magic Pen -->
+        <button id="btnMagic" class="tool-btn px-6 py-3 ml-1 rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 text-white font-bold shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50 hover:from-purple-400 hover:to-indigo-400 transition-all flex items-center gap-2 group" title="Lápiz Mágico: Dibuja formas o escribe a mano y la IA lo perfecciona">
+          <i data-lucide="wand-2" class="w-5 h-5 group-hover:rotate-12 transition-transform"></i>
+          <span>Mágico</span>
+        </button>
+
+      </div>
+    </div>
 
     <script type="module" src="/main.js"></script>
+    <script>
+      // Initialize Lucide icons
+      lucide.createIcons();
+    </script>
   </body>
 </html>

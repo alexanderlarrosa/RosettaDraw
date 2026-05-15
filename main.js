@@ -7,20 +7,49 @@ const statusIndicator = document.getElementById('statusIndicator');
 
 // Buttons
 const btnPencil = document.getElementById('btnPencil');
+const btnEraser = document.getElementById('btnEraser');
 const btnSelect = document.getElementById('btnSelect');
 const btnRect = document.getElementById('btnRect');
 const btnCircle = document.getElementById('btnCircle');
+const btnTriangle = document.getElementById('btnTriangle');
+const btnLine = document.getElementById('btnLine');
+const btnArrow = document.getElementById('btnArrow');
 const btnText = document.getElementById('btnText');
 const btnMagic = document.getElementById('btnMagic');
 const btnNew = document.getElementById('btnNew');
 const btnSave = document.getElementById('btnSave');
+const btnUndo = document.getElementById('btnUndo');
+const btnRedo = document.getElementById('btnRedo');
+
+// Properties Toolbar
+const strokeColorInput = document.getElementById('strokeColor');
+const fillColorInput = document.getElementById('fillColor');
+const fillTransparentInput = document.getElementById('fillTransparent');
+const strokeWidthInput = document.getElementById('strokeWidth');
+const strokeWidthVal = document.getElementById('strokeWidthVal');
+const strokeWidthContainer = document.getElementById('strokeWidthContainer');
+const eraserWidthInput = document.getElementById('eraserWidth');
+const eraserWidthVal = document.getElementById('eraserWidthVal');
+const eraserWidthContainer = document.getElementById('eraserWidthContainer');
 
 // --- State ---
+let currentTool = 'pencil'; // pencil, select, magic, rect, circle, triangle, line, arrow, text
 let isMagicMode = false;
 let magicPaths = [];
 let magicStrokeData = []; // Guardar coordenadas X, Y de cada trazo
 let magicDebounceTimer = null;
 const MAGIC_TIMEOUT = 2500; // 2.5 seconds
+
+// State for shape drawing
+let isDrawingShape = false;
+let origX = 0;
+let origY = 0;
+let activeShape = null;
+
+// History State
+let undoStack = [];
+let redoStack = [];
+let isHistoryProcessing = false;
 
 const dollar = new DollarRecognizer();
 
@@ -99,21 +128,74 @@ function setStatus(text, type = 'normal') {
 setStatus('Lápiz Mágico preparado.', 'magic');
 
 function updateActiveButton(activeBtn) {
-  const tools = [btnPencil, btnSelect, btnMagic];
+  const tools = [btnPencil, btnEraser, btnSelect, btnMagic, btnRect, btnCircle, btnTriangle, btnLine, btnArrow, btnText];
   tools.forEach(btn => {
     if (btn === btnMagic) {
-      if (btn === activeBtn) btn.classList.add('ring-4', 'ring-purple-300');
-      else btn.classList.remove('ring-4', 'ring-purple-300');
+      if (btn === activeBtn) btn.classList.add('ring-4', 'ring-purple-500/50');
+      else btn.classList.remove('ring-4', 'ring-purple-500/50');
     } else {
       if (btn === activeBtn) {
-        btn.classList.add('bg-white', 'shadow-sm', 'text-blue-600');
-        btn.classList.remove('text-gray-600', 'hover:bg-gray-200');
+        btn.classList.add('bg-white/10', 'text-white', 'shadow-sm');
+        btn.classList.remove('text-zinc-400', 'hover:text-white', 'hover:bg-white/10');
       } else {
-        btn.classList.remove('bg-white', 'shadow-sm', 'text-blue-600');
-        btn.classList.add('text-gray-600', 'hover:bg-gray-200');
+        btn.classList.remove('bg-white/10', 'text-white', 'shadow-sm');
+        btn.classList.add('text-zinc-400', 'hover:text-white', 'hover:bg-white/10');
       }
     }
   });
+}
+
+function updateEraserCursor() {
+  const size = parseInt(eraserWidthInput.value, 10);
+  const svg = `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg"><circle cx="${size/2}" cy="${size/2}" r="${size/2 - 1}" fill="rgba(0,0,0,0.1)" stroke="black" stroke-width="1"/></svg>`;
+  const encoded = encodeURIComponent(svg);
+  const cursorUrl = `url("data:image/svg+xml;utf8,${encoded}") ${size/2} ${size/2}, crosshair`;
+  canvas.freeDrawingCursor = cursorUrl;
+  canvas.defaultCursor = cursorUrl;
+}
+
+function setTool(toolName, btnElement, drawingMode = false) {
+  currentTool = toolName;
+  isMagicMode = toolName === 'magic';
+  canvas.isDrawingMode = drawingMode;
+  
+  // Deshabilitar la selección libre de objetos cuando estamos dibujando formas
+  canvas.selection = toolName === 'select';
+  
+  // Mostrar barra de goma o barra de trazo
+  if (toolName === 'eraser') {
+    strokeWidthContainer.classList.add('hidden');
+    strokeWidthContainer.classList.remove('flex');
+    eraserWidthContainer.classList.add('flex');
+    eraserWidthContainer.classList.remove('hidden');
+  } else {
+    eraserWidthContainer.classList.add('hidden');
+    eraserWidthContainer.classList.remove('flex');
+    strokeWidthContainer.classList.add('flex');
+    strokeWidthContainer.classList.remove('hidden');
+  }
+
+  // Cambiar el cursor
+  if (['rect', 'circle', 'triangle', 'line', 'arrow', 'text'].includes(toolName)) {
+    canvas.defaultCursor = 'crosshair';
+    canvas.freeDrawingCursor = 'crosshair';
+  } else if (toolName === 'eraser') {
+    updateEraserCursor();
+  } else if (toolName === 'pencil') {
+    canvas.freeDrawingCursor = 'crosshair';
+    canvas.defaultCursor = 'default';
+  } else {
+    canvas.freeDrawingCursor = 'crosshair';
+    canvas.defaultCursor = 'default';
+  }
+
+  // Si pasamos a dibujar formas, deseleccionamos lo que esté activo
+  if (toolName !== 'select') {
+    canvas.discardActiveObject();
+    canvas.renderAll();
+  }
+
+  updateActiveButton(btnElement);
 }
 
 function getCenter() {
@@ -122,63 +204,85 @@ function getCenter() {
 
 // --- Standard Tools Logic ---
 btnPencil.addEventListener('click', () => {
-  isMagicMode = false;
-  canvas.isDrawingMode = true;
-  updateActiveButton(btnPencil);
+  setTool('pencil', btnPencil, true);
   setStatus('Lápiz Normal', 'action');
-  canvas.freeDrawingBrush.color = '#000000';
-  canvas.freeDrawingBrush.width = 3;
+  canvas.freeDrawingBrush.color = strokeColorInput.value;
+  canvas.freeDrawingBrush.width = parseInt(strokeWidthInput.value, 10);
+});
+
+btnEraser.addEventListener('click', () => {
+  setTool('eraser', btnEraser, true);
+  setStatus('Goma de Borrar (Pinta sobre los trazos para borrar)', 'action');
+  canvas.freeDrawingBrush.color = '#f3f4f6'; // Mismo color del fondo temporalmente
+  canvas.freeDrawingBrush.width = parseInt(eraserWidthInput.value, 10);
 });
 
 btnSelect.addEventListener('click', () => {
-  isMagicMode = false;
-  canvas.isDrawingMode = false;
-  updateActiveButton(btnSelect);
+  setTool('select', btnSelect, false);
   setStatus('Modo Selección', 'action');
 });
 
+// Botones de Formas Geomátricas
+btnRect.addEventListener('click', () => {
+  setTool('rect', btnRect, false);
+  setStatus('Dibujar Rectángulo', 'action');
+});
+
+btnCircle.addEventListener('click', () => {
+  setTool('circle', btnCircle, false);
+  setStatus('Dibujar Círculo', 'action');
+});
+
+btnTriangle.addEventListener('click', () => {
+  setTool('triangle', btnTriangle, false);
+  setStatus('Dibujar Triángulo', 'action');
+});
+
+btnLine.addEventListener('click', () => {
+  setTool('line', btnLine, false);
+  setStatus('Dibujar Línea', 'action');
+});
+
+btnArrow.addEventListener('click', () => {
+  setTool('arrow', btnArrow, false);
+  setStatus('Dibujar Flecha', 'action');
+});
+
+btnText.addEventListener('click', () => {
+  setTool('text', btnText, false);
+  setStatus('Escribir Texto', 'action');
+});
+
 window.addEventListener('keydown', (e) => {
+  // Ignorar si estamos escribiendo en un input o textbox activo
+  if (e.target.tagName === 'INPUT' || (canvas.getActiveObject() && canvas.getActiveObject().isEditing)) return;
+
   if (e.key === 'Delete' || e.key === 'Backspace') {
-    if (canvas.getActiveObject() && canvas.getActiveObject().isEditing) return;
     const activeObjects = canvas.getActiveObjects();
     if (activeObjects.length) {
       canvas.discardActiveObject();
       activeObjects.forEach((obj) => canvas.remove(obj));
       canvas.renderAll();
     }
+  } else if (e.ctrlKey || e.metaKey) {
+    if (e.key === 'z') {
+      e.preventDefault();
+      undo();
+    } else if (e.key === 'y') {
+      e.preventDefault();
+      redo();
+    }
   }
-});
-
-btnRect.addEventListener('click', () => {
-  const center = getCenter();
-  const rect = new fabric.Rect({
-    left: center.left, top: center.top, fill: 'transparent',
-    stroke: 'black', strokeWidth: 3, width: 100, height: 100, originX: 'center', originY: 'center'
-  });
-  canvas.add(rect); canvas.setActiveObject(rect);
-});
-
-btnCircle.addEventListener('click', () => {
-  const center = getCenter();
-  const circle = new fabric.Circle({
-    left: center.left, top: center.top, fill: 'transparent',
-    stroke: 'black', strokeWidth: 3, radius: 50, originX: 'center', originY: 'center'
-  });
-  canvas.add(circle); canvas.setActiveObject(circle);
-});
-
-btnText.addEventListener('click', () => {
-  const center = getCenter();
-  const text = new fabric.IText('Texto...', {
-    left: center.left, top: center.top, fontFamily: 'sans-serif', fill: 'black',
-    fontSize: 32, originX: 'center', originY: 'center'
-  });
-  canvas.add(text); canvas.setActiveObject(text); text.enterEditing(); text.selectAll();
 });
 
 btnNew.addEventListener('click', () => {
   if(confirm('¿Estás seguro que deseas limpiar el lienzo?')) {
-    canvas.clear(); canvas.backgroundColor = '#f3f4f6'; canvas.renderAll();
+    isHistoryProcessing = true;
+    canvas.clear(); 
+    canvas.backgroundColor = null; 
+    canvas.renderAll();
+    isHistoryProcessing = false;
+    saveHistory(true); // reset history
     setStatus('Lienzo limpio');
   }
 });
@@ -189,14 +293,94 @@ btnSave.addEventListener('click', () => {
   document.body.appendChild(link); link.click(); document.body.removeChild(link);
 });
 
+// --- Properties Logic ---
+function getFillColor() {
+  return fillTransparentInput.checked ? 'transparent' : fillColorInput.value;
+}
+
+function updateSelectedObjects() {
+  const activeObjects = canvas.getActiveObjects();
+  if (activeObjects.length === 0) return;
+  
+  const stroke = strokeColorInput.value;
+  const fill = getFillColor();
+  const strokeWidth = parseInt(strokeWidthInput.value, 10);
+
+  activeObjects.forEach(obj => {
+    // Para IText y Path, fill es el color principal a veces, pero para formas básicas es stroke
+    if (obj.type === 'i-text') {
+      obj.set({ fill: stroke }); // El texto usa 'fill' para el color de fuente
+    } else {
+      obj.set({ stroke: stroke, fill: fill, strokeWidth: strokeWidth });
+    }
+  });
+  canvas.renderAll();
+}
+
+strokeColorInput.addEventListener('input', () => {
+  if (currentTool === 'pencil') canvas.freeDrawingBrush.color = strokeColorInput.value;
+  updateSelectedObjects();
+});
+
+fillColorInput.addEventListener('input', updateSelectedObjects);
+
+fillTransparentInput.addEventListener('change', () => {
+  fillColorInput.disabled = fillTransparentInput.checked;
+  updateSelectedObjects();
+});
+
+strokeWidthInput.addEventListener('input', () => {
+  const val = strokeWidthInput.value;
+  strokeWidthVal.textContent = val + 'px';
+  if (currentTool === 'pencil') {
+    canvas.freeDrawingBrush.width = parseInt(val, 10);
+  }
+  updateSelectedObjects();
+});
+
+eraserWidthInput.addEventListener('input', () => {
+  const val = eraserWidthInput.value;
+  eraserWidthVal.textContent = val + 'px';
+  if (currentTool === 'eraser') {
+    canvas.freeDrawingBrush.width = parseInt(val, 10);
+    updateEraserCursor();
+  }
+});
+
+// Actualizar barra de herramientas cuando se selecciona un objeto
+canvas.on('selection:created', handleSelection);
+canvas.on('selection:updated', handleSelection);
+
+function handleSelection(e) {
+  const obj = e.selected[0];
+  if (!obj) return;
+
+  if (obj.type === 'i-text') {
+    strokeColorInput.value = obj.fill || '#000000';
+  } else {
+    if (obj.stroke) strokeColorInput.value = obj.stroke;
+    if (obj.strokeWidth) {
+      strokeWidthInput.value = obj.strokeWidth;
+      strokeWidthVal.textContent = obj.strokeWidth + 'px';
+    }
+    if (obj.fill === 'transparent' || !obj.fill) {
+      fillTransparentInput.checked = true;
+      fillColorInput.disabled = true;
+    } else {
+      fillTransparentInput.checked = false;
+      fillColorInput.disabled = false;
+      fillColorInput.value = obj.fill;
+    }
+  }
+}
+
 // --- Magic Pen Logic ---
 btnMagic.addEventListener('click', () => {
-  isMagicMode = true;
-  canvas.isDrawingMode = true;
-  updateActiveButton(btnMagic);
+  setTool('magic', btnMagic, true);
   setStatus('Lápiz Mágico Activado', 'magic');
+  // Lápiz mágico siempre usa su color morado distintivo temporalmente
   canvas.freeDrawingBrush.color = '#8b5cf6';
-  canvas.freeDrawingBrush.width = 4;
+  canvas.freeDrawingBrush.width = parseInt(strokeWidthInput.value, 10) + 2; 
 });
 
 // Capturar puntos del trazo en tiempo real para Google Handwriting
@@ -205,51 +389,137 @@ let currentStrokeY = [];
 let currentStrokeT = [];
 let strokeStartTime = 0;
 
+// Lógica de Mouse en el Canvas
 canvas.on('mouse:down', (e) => {
-  if (!isMagicMode) return;
-  if (magicDebounceTimer) clearTimeout(magicDebounceTimer);
-  
-  // Iniciar captura de trazo
-  strokeStartTime = Date.now();
-  currentStrokeX = [];
-  currentStrokeY = [];
-  currentStrokeT = [];
-  
   const pointer = canvas.getPointer(e.e);
-  currentStrokeX.push(Math.round(pointer.x));
-  currentStrokeY.push(Math.round(pointer.y));
-  currentStrokeT.push(0);
+  
+  if (isMagicMode) {
+    if (magicDebounceTimer) clearTimeout(magicDebounceTimer);
+    strokeStartTime = Date.now();
+    currentStrokeX = [];
+    currentStrokeY = [];
+    currentStrokeT = [];
+    currentStrokeX.push(Math.round(pointer.x));
+    currentStrokeY.push(Math.round(pointer.y));
+    currentStrokeT.push(0);
+    return;
+  }
+
+  // --- Dibujo manual de formas ---
+  if (['rect', 'circle', 'triangle', 'line', 'arrow', 'text'].includes(currentTool)) {
+    isDrawingShape = true;
+    origX = pointer.x;
+    origY = pointer.y;
+
+    if (currentTool === 'text') {
+      // El texto no se arrastra, se crea directo en el click
+      const textObj = new fabric.IText('Texto...', {
+        left: origX, top: origY, fontFamily: 'sans-serif', fill: strokeColorInput.value,
+        fontSize: Math.max(32, parseInt(strokeWidthInput.value, 10) * 8), originX: 'left', originY: 'top'
+      });
+      canvas.add(textObj);
+      canvas.setActiveObject(textObj);
+      textObj.enterEditing();
+      textObj.selectAll();
+      isDrawingShape = false;
+      btnSelect.click(); // Cambiar a selección tras crear
+      return;
+    }
+
+    const commonProps = {
+      left: origX, top: origY, fill: getFillColor(),
+      stroke: strokeColorInput.value, strokeWidth: parseInt(strokeWidthInput.value, 10), selectable: false, evented: false
+    };
+
+    if (currentTool === 'rect') {
+      activeShape = new fabric.Rect({ ...commonProps, originX: 'left', originY: 'top', width: 0, height: 0 });
+    } else if (currentTool === 'circle') {
+      activeShape = new fabric.Circle({ ...commonProps, originX: 'center', originY: 'center', radius: 0 });
+    } else if (currentTool === 'triangle') {
+      activeShape = new fabric.Triangle({ ...commonProps, originX: 'left', originY: 'top', width: 0, height: 0 });
+    } else if (currentTool === 'line') {
+      activeShape = new fabric.Line([origX, origY, origX, origY], { ...commonProps, originX: 'center', originY: 'center' });
+    } else if (currentTool === 'arrow') {
+      // Usaremos un Path dinámico para la flecha
+      activeShape = new fabric.Path(`M ${origX} ${origY} L ${origX} ${origY}`, { ...commonProps, originX: 'left', originY: 'top' });
+    }
+
+    if (activeShape) canvas.add(activeShape);
+  }
 });
 
 canvas.on('mouse:move', (e) => {
-  if (!isMagicMode || currentStrokeX.length === 0) return;
-  if (!e.e.buttons) return; // Solo si se está presionando el botón
-  
   const pointer = canvas.getPointer(e.e);
-  currentStrokeX.push(Math.round(pointer.x));
-  currentStrokeY.push(Math.round(pointer.y));
-  currentStrokeT.push(Date.now() - strokeStartTime);
+
+  if (isMagicMode && currentStrokeX.length > 0 && e.e.buttons) {
+    currentStrokeX.push(Math.round(pointer.x));
+    currentStrokeY.push(Math.round(pointer.y));
+    currentStrokeT.push(Date.now() - strokeStartTime);
+    return;
+  }
+
+  // --- Actualizar tamaño de la forma en tiempo real ---
+  if (!isDrawingShape || !activeShape) return;
+
+  if (currentTool === 'rect' || currentTool === 'triangle') {
+    activeShape.set({ width: Math.abs(origX - pointer.x), height: Math.abs(origY - pointer.y) });
+    if (pointer.x < origX) activeShape.set({ left: pointer.x });
+    if (pointer.y < origY) activeShape.set({ top: pointer.y });
+  } else if (currentTool === 'circle') {
+    const radius = Math.max(Math.abs(origX - pointer.x), Math.abs(origY - pointer.y)) / 2;
+    activeShape.set({ radius: radius });
+  } else if (currentTool === 'line') {
+    activeShape.set({ x2: pointer.x, y2: pointer.y });
+  } else if (currentTool === 'arrow') {
+    // Dibujar línea con punta de flecha usando un Path
+    const headlen = 20; // Longitud de la punta
+    const angle = Math.atan2(pointer.y - origY, pointer.x - origX);
+    const pathString = `M ${origX} ${origY} L ${pointer.x} ${pointer.y} M ${pointer.x} ${pointer.y} L ${pointer.x - headlen * Math.cos(angle - Math.PI / 6)} ${pointer.y - headlen * Math.sin(angle - Math.PI / 6)} M ${pointer.x} ${pointer.y} L ${pointer.x - headlen * Math.cos(angle + Math.PI / 6)} ${pointer.y - headlen * Math.sin(angle + Math.PI / 6)}`;
+    
+    // Remover el path anterior y crear el nuevo
+    canvas.remove(activeShape);
+    activeShape = new fabric.Path(pathString, {
+      fill: 'transparent', stroke: strokeColorInput.value, strokeWidth: parseInt(strokeWidthInput.value, 10), selectable: false, evented: false, originX: 'left', originY: 'top'
+    });
+    canvas.add(activeShape);
+  }
+
+  canvas.renderAll();
 });
 
 canvas.on('mouse:up', () => {
-  if (!isMagicMode || currentStrokeX.length === 0) return;
-  
-  // Guardar el trazo completado
-  if (currentStrokeX.length > 1) {
-    magicStrokeData.push([currentStrokeX, currentStrokeY, currentStrokeT]);
+  if (isMagicMode && currentStrokeX.length > 0) {
+    if (currentStrokeX.length > 1) {
+      magicStrokeData.push([currentStrokeX, currentStrokeY, currentStrokeT]);
+    }
+    currentStrokeX = []; currentStrokeY = []; currentStrokeT = [];
+    return;
   }
-  
-  currentStrokeX = [];
-  currentStrokeY = [];
-  currentStrokeT = [];
+
+  // --- Finalizar la forma ---
+  if (isDrawingShape && activeShape) {
+    isDrawingShape = false;
+    activeShape.set({ selectable: true, evented: true });
+    activeShape.setCoords();
+    canvas.setActiveObject(activeShape);
+    activeShape = null;
+    btnSelect.click(); // Volver a Selección automáticamente
+  }
 });
 
 canvas.on('path:created', (e) => {
-  if (!isMagicMode) return;
-  magicPaths.push(e.path);
-  setStatus('Dibujando...', 'magic');
-  if (magicDebounceTimer) clearTimeout(magicDebounceTimer);
-  magicDebounceTimer = setTimeout(() => { processMagicPaths(); }, MAGIC_TIMEOUT);
+  if (currentTool === 'eraser') {
+    // Truco de magia vectorial: perforar todos los objetos debajo
+    e.path.globalCompositeOperation = 'destination-out';
+    e.path.selectable = false;
+    e.path.evented = false;
+    // Forzamos que se vuelva a guardar el historial ahora que el path cambió
+    saveHistory(); 
+  } else if (isMagicMode) {
+    magicPaths.push(e.path);
+    if (magicDebounceTimer) clearTimeout(magicDebounceTimer);
+    magicDebounceTimer = setTimeout(processMagicPaths, MAGIC_TIMEOUT);
+  }
 });
 
 async function processMagicPaths() {
@@ -305,10 +575,14 @@ async function processMagicPaths() {
 
   // Si detectó una forma, reemplaza y termina
   if (newShape) {
+    isHistoryProcessing = true;
     canvas.remove(magicPaths[0]);
     canvas.add(newShape);
+    isHistoryProcessing = false;
+    saveHistory();
     setStatus(`Forma detectada: ${newShape.type}`, 'magic');
     resetMagicMode();
+    btnSelect.click(); // Cambiar a modo selección automáticamente
     return;
   }
 
@@ -323,19 +597,23 @@ async function processMagicPaths() {
     setStatus('Reconociendo texto...', 'magic');
     
     const candidates = await recognizeHandwriting(magicStrokeData);
-    console.log("Candidatos:", candidates);
-
     if (candidates.length > 0) {
       const bestText = candidates[0].trim();
       if (bestText.length > 0) {
         const textObj = new fabric.IText(bestText, {
           left: bBox.left, top: bBox.top, fontFamily: 'sans-serif',
-          fill: '#8b5cf6', fontSize: Math.max(24, bBox.height * 0.8)
+          fill: strokeColorInput.value, fontSize: Math.max(24, bBox.height * 0.8)
         });
+        
+        isHistoryProcessing = true;
         magicPaths.forEach(p => canvas.remove(p));
         canvas.add(textObj);
+        isHistoryProcessing = false;
+        saveHistory();
+        
         canvas.setActiveObject(textObj);
         setStatus('Texto detectado: ' + bestText, 'magic');
+        btnSelect.click(); // Cambiar a modo selección para permitir doble clic y edición
       } else {
         setStatus('No se entendió la palabra', 'magic');
       }
@@ -361,3 +639,64 @@ function resetMagicMode() {
     }
   }, 2000);
 }
+
+// --- Undo / Redo History ---
+function updateHistoryButtons() {
+  btnUndo.disabled = undoStack.length <= 1;
+  btnRedo.disabled = redoStack.length === 0;
+  
+  btnUndo.classList.toggle('opacity-50', btnUndo.disabled);
+  btnRedo.classList.toggle('opacity-50', btnRedo.disabled);
+}
+
+function saveHistory(isReset = false) {
+  if (isHistoryProcessing) return;
+  
+  if (isReset) {
+    undoStack = [];
+    redoStack = [];
+  }
+  
+  undoStack.push(JSON.stringify(canvas.toDatalessJSON()));
+  redoStack = []; // Clear redo stack on new action
+  updateHistoryButtons();
+}
+
+function undo() {
+  if (undoStack.length > 1) {
+    isHistoryProcessing = true;
+    redoStack.push(undoStack.pop()); // Move current state to redo
+    const previousState = undoStack[undoStack.length - 1]; // Get previous
+    
+    canvas.loadFromJSON(previousState, () => {
+      canvas.renderAll();
+      isHistoryProcessing = false;
+      updateHistoryButtons();
+    });
+  }
+}
+
+function redo() {
+  if (redoStack.length > 0) {
+    isHistoryProcessing = true;
+    const nextState = redoStack.pop();
+    undoStack.push(nextState);
+    
+    canvas.loadFromJSON(nextState, () => {
+      canvas.renderAll();
+      isHistoryProcessing = false;
+      updateHistoryButtons();
+    });
+  }
+}
+
+btnUndo.addEventListener('click', undo);
+btnRedo.addEventListener('click', redo);
+
+// Capture canvas events for history
+canvas.on('object:added', () => saveHistory());
+canvas.on('object:modified', () => saveHistory());
+canvas.on('object:removed', () => saveHistory());
+
+// Save initial blank state
+saveHistory(true);
