@@ -1,4 +1,5 @@
 import { fabric } from 'fabric';
+import 'fabric-eraser-brush';
 import { DollarRecognizer } from './unistroke.js';
 
 // --- UI Elements ---
@@ -162,8 +163,9 @@ function setTool(toolName, btnElement, drawingMode = false) {
   isMagicMode = toolName === 'magic';
   canvas.isDrawingMode = drawingMode;
   
-  // Deshabilitar la selección libre de objetos cuando estamos dibujando formas
+  // Deshabilitar la selección libre de objetos y la interacción al dibujar
   canvas.selection = toolName === 'select';
+  canvas.skipTargetFind = toolName !== 'select';
   
   // Mostrar barra de goma o barra de trazo
   if (toolName === 'eraser') {
@@ -209,14 +211,15 @@ function getCenter() {
 btnPencil.addEventListener('click', () => {
   setTool('pencil', btnPencil, true);
   setStatus('Lápiz Normal', 'action');
+  canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
   canvas.freeDrawingBrush.color = strokeColorInput.value;
   canvas.freeDrawingBrush.width = parseInt(strokeWidthInput.value, 10);
 });
 
 btnEraser.addEventListener('click', () => {
   setTool('eraser', btnEraser, true);
-  setStatus('Goma de Borrar (Pinta sobre los trazos para borrar)', 'action');
-  canvas.freeDrawingBrush.color = '#f3f4f6'; // Mismo color del fondo temporalmente
+  setStatus('Goma de Borrar (Borrado Vectorial Permanente)', 'action');
+  canvas.freeDrawingBrush = new fabric.EraserBrush(canvas);
   canvas.freeDrawingBrush.width = parseInt(eraserWidthInput.value, 10);
 });
 
@@ -401,6 +404,7 @@ btnMagic.addEventListener('click', () => {
   setTool('magic', btnMagic, true);
   setStatus('Lápiz Mágico Activado', 'magic');
   // Lápiz mágico siempre usa su color morado distintivo temporalmente
+  canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
   canvas.freeDrawingBrush.color = '#8b5cf6';
   canvas.freeDrawingBrush.width = parseInt(strokeWidthInput.value, 10) + 2; 
 });
@@ -528,15 +532,12 @@ canvas.on('mouse:up', () => {
   }
 });
 
+canvas.on('erasing:end', () => {
+  saveHistory();
+});
+
 canvas.on('path:created', (e) => {
-  if (currentTool === 'eraser') {
-    // Truco de magia vectorial: perforar todos los objetos debajo
-    e.path.globalCompositeOperation = 'destination-out';
-    e.path.selectable = false;
-    e.path.evented = false;
-    // Forzamos que se vuelva a guardar el historial ahora que el path cambió
-    saveHistory(); 
-  } else if (isMagicMode) {
+  if (isMagicMode) {
     magicPaths.push(e.path);
     if (magicDebounceTimer) clearTimeout(magicDebounceTimer);
     magicDebounceTimer = setTimeout(processMagicPaths, MAGIC_TIMEOUT);
