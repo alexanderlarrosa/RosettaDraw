@@ -43,6 +43,7 @@ const fixedTextSizeInput = document.getElementById('fixedTextSize');
 
 // --- State ---
 let currentTool = 'pencil'; // pencil, select, magic, rect, circle, triangle, line, arrow, text
+let currentArrowStyle = 'normal'; // normal, triangle-hollow, triangle-filled, diamond-hollow, diamond-filled
 let isMagicMode = false;
 let magicPaths = [];
 let magicStrokeData = []; // Guardar coordenadas X, Y de cada trazo
@@ -317,9 +318,37 @@ btnLine.addEventListener('click', () => {
   setStatus('Dibujar Línea', 'action');
 });
 
-btnArrow.addEventListener('click', () => {
+const arrowMenu = document.getElementById('arrowMenu');
+const iconArrow = document.getElementById('iconArrow');
+let arrowPressTimer;
+
+btnArrow.addEventListener('mousedown', () => {
+  arrowPressTimer = setTimeout(() => {
+    arrowMenu.classList.remove('hidden');
+    arrowMenu.classList.add('flex');
+  }, 500);
+});
+
+btnArrow.addEventListener('mouseup', () => {
+  clearTimeout(arrowPressTimer);
   setTool('arrow', btnArrow, false);
   setStatus('Dibujar Flecha', 'action');
+});
+
+btnArrow.addEventListener('mouseleave', () => {
+  clearTimeout(arrowPressTimer);
+});
+
+document.querySelectorAll('.arrow-style-btn').forEach(btn => {
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    currentArrowStyle = btn.dataset.style;
+    iconArrow.innerHTML = btn.querySelector('svg').innerHTML;
+    arrowMenu.classList.add('hidden');
+    arrowMenu.classList.remove('flex');
+    setTool('arrow', btnArrow, false);
+    setStatus('Dibujar Flecha', 'action');
+  });
 });
 
 btnText.addEventListener('click', () => {
@@ -643,15 +672,46 @@ canvas.on('mouse:move', (e) => {
   } else if (currentTool === 'line') {
     activeShape.set({ x2: pointer.x, y2: pointer.y });
   } else if (currentTool === 'arrow') {
-    // Dibujar línea con punta de flecha usando un Path
-    const headlen = 20; // Longitud de la punta
+    const headlen = 20; 
     const angle = Math.atan2(pointer.y - origY, pointer.x - origX);
-    const pathString = `M ${origX} ${origY} L ${pointer.x} ${pointer.y} M ${pointer.x} ${pointer.y} L ${pointer.x - headlen * Math.cos(angle - Math.PI / 6)} ${pointer.y - headlen * Math.sin(angle - Math.PI / 6)} M ${pointer.x} ${pointer.y} L ${pointer.x - headlen * Math.cos(angle + Math.PI / 6)} ${pointer.y - headlen * Math.sin(angle + Math.PI / 6)}`;
+    let pathString = '';
+    let stopDist = 0;
     
-    // Remover el path anterior y crear el nuevo
+    if (currentArrowStyle.includes('triangle')) stopDist = headlen * 0.866;
+    else if (currentArrowStyle.includes('diamond')) stopDist = headlen;
+    
+    const lineEndX = pointer.x - stopDist * Math.cos(angle);
+    const lineEndY = pointer.y - stopDist * Math.sin(angle);
+    
+    pathString += `M ${origX} ${origY} L ${lineEndX} ${lineEndY} `;
+    
+    if (currentArrowStyle === 'normal') {
+      const pt1x = pointer.x - headlen * Math.cos(angle - Math.PI / 6);
+      const pt1y = pointer.y - headlen * Math.sin(angle - Math.PI / 6);
+      const pt2x = pointer.x - headlen * Math.cos(angle + Math.PI / 6);
+      const pt2y = pointer.y - headlen * Math.sin(angle + Math.PI / 6);
+      pathString += `M ${pointer.x} ${pointer.y} L ${pt1x} ${pt1y} M ${pointer.x} ${pointer.y} L ${pt2x} ${pt2y}`;
+    } else if (currentArrowStyle.includes('triangle')) {
+      const pt1x = pointer.x - headlen * Math.cos(angle - Math.PI / 6);
+      const pt1y = pointer.y - headlen * Math.sin(angle - Math.PI / 6);
+      const pt2x = pointer.x - headlen * Math.cos(angle + Math.PI / 6);
+      const pt2y = pointer.y - headlen * Math.sin(angle + Math.PI / 6);
+      pathString += `M ${pointer.x} ${pointer.y} L ${pt1x} ${pt1y} L ${pt2x} ${pt2y} Z`;
+    } else if (currentArrowStyle.includes('diamond')) {
+      const mid1x = pointer.x - (headlen/2) * Math.cos(angle - Math.PI / 4);
+      const mid1y = pointer.y - (headlen/2) * Math.sin(angle - Math.PI / 4);
+      const basex = pointer.x - headlen * Math.cos(angle);
+      const basey = pointer.y - headlen * Math.sin(angle);
+      const mid2x = pointer.x - (headlen/2) * Math.cos(angle + Math.PI / 4);
+      const mid2y = pointer.y - (headlen/2) * Math.sin(angle + Math.PI / 4);
+      pathString += `M ${pointer.x} ${pointer.y} L ${mid1x} ${mid1y} L ${basex} ${basey} L ${mid2x} ${mid2y} Z`;
+    }
+
+    const fillVal = currentArrowStyle.includes('filled') ? strokeColorInput.value : 'transparent';
+    
     canvas.remove(activeShape);
     activeShape = new fabric.Path(pathString, {
-      fill: 'transparent', stroke: strokeColorInput.value, strokeWidth: parseInt(strokeWidthInput.value, 10), selectable: false, evented: false, originX: 'left', originY: 'top'
+      fill: fillVal, stroke: strokeColorInput.value, strokeWidth: parseInt(strokeWidthInput.value, 10), selectable: false, evented: false, originX: 'left', originY: 'top', strokeLineJoin: 'round'
     });
     canvas.add(activeShape);
   }
