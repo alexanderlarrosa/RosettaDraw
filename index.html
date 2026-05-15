@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>App Lápiz - Web de Dibujo</title>
+    <title>RosettaDraw - Web de Dibujo</title>
     <link href="/style.css" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
@@ -42,7 +42,7 @@
       <div class="flex items-center gap-4 shrink-0">
         <h1 class="text-lg font-bold text-white tracking-tight flex items-center gap-2">
           <i data-lucide="pen-tool" class="w-5 h-5 text-purple-400"></i>
-          App Lápiz
+          RosettaDraw
         </h1>
         <div id="statusIndicator" class="text-xs text-green-400 font-medium flex items-center gap-1.5 hidden lg:flex">
           <div class="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></div>
@@ -73,7 +73,6 @@
           <div class="flex items-center gap-2">
             <label class="flex items-center gap-1 text-xs text-zinc-400 cursor-pointer hover:text-white" title="Transparente">
               <input type="checkbox" id="fillTransparent" checked class="rounded border-zinc-600 bg-zinc-800 text-purple-500 focus:ring-purple-500/50">
-              Vacío
             </label>
             <div class="relative w-7 h-7 rounded-full overflow-hidden border border-white/20">
               <input type="color" id="fillColor" value="#ffffff" class="absolute -inset-2 w-12 h-12 cursor-pointer disabled:opacity-50">
@@ -134,8 +133,15 @@
         <button id="btnNew" class="px-3 py-1.5 text-sm font-medium text-red-400 hover:text-red-300 hover:bg-red-400/10 rounded-xl transition-colors">
           Limpiar
         </button>
-        <button id="btnSave" class="px-3 py-1.5 text-sm font-medium bg-white text-black hover:bg-gray-200 rounded-xl transition-colors ml-1 shadow-sm flex items-center gap-1.5">
-          <i data-lucide="download" class="w-3 h-3"></i> Exportar
+        <button id="btnImport" class="px-3 py-1.5 text-sm font-medium text-white hover:bg-white/10 rounded-xl transition-colors ml-1 shadow-sm flex items-center gap-1.5" title="Abrir Proyecto (.json) o Imagen">
+          <i data-lucide="folder-open" class="w-3 h-3"></i> Abrir
+        </button>
+        <input type="file" id="fileInput" accept="image/*,.json" class="hidden">
+        <button id="btnSaveProject" class="px-3 py-1.5 text-sm font-medium text-blue-400 hover:text-blue-300 hover:bg-blue-400/10 rounded-xl transition-colors ml-1 shadow-sm flex items-center gap-1.5" title="Guardar Proyecto Editable (.json)">
+          <i data-lucide="save" class="w-3 h-3"></i> Proyecto
+        </button>
+        <button id="btnSave" class="px-3 py-1.5 text-sm font-medium bg-white text-black hover:bg-gray-200 rounded-xl transition-colors ml-1 shadow-sm flex items-center gap-1.5" title="Exportar como Imagen PNG">
+          <i data-lucide="image" class="w-3 h-3"></i> PNG
         </button>
       </div>
     </header>

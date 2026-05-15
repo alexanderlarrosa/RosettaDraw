@@ -18,7 +18,10 @@ const btnArrow = document.getElementById('btnArrow');
 const btnText = document.getElementById('btnText');
 const btnMagic = document.getElementById('btnMagic');
 const btnNew = document.getElementById('btnNew');
+const btnSaveProject = document.getElementById('btnSaveProject');
 const btnSave = document.getElementById('btnSave');
+const btnImport = document.getElementById('btnImport');
+const fileInput = document.getElementById('fileInput');
 const btnUndo = document.getElementById('btnUndo');
 const btnRedo = document.getElementById('btnRedo');
 
@@ -293,10 +296,82 @@ btnNew.addEventListener('click', () => {
   }
 });
 
+btnSaveProject.addEventListener('click', () => {
+  const json = canvas.toJSON(['id', 'selectable', 'evented']);
+  const blob = new Blob([JSON.stringify(json)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a'); 
+  link.download = 'rosettadraw-proyecto.json'; 
+  link.href = url;
+  document.body.appendChild(link); 
+  link.click(); 
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+  setStatus('Proyecto guardado', 'action');
+});
+
 btnSave.addEventListener('click', () => {
   const dataURL = canvas.toDataURL({ format: 'png', quality: 1 });
-  const link = document.createElement('a'); link.download = 'mi-dibujo.png'; link.href = dataURL;
+  const link = document.createElement('a'); link.download = 'rosettadraw-imagen.png'; link.href = dataURL;
   document.body.appendChild(link); link.click(); document.body.removeChild(link);
+});
+
+btnImport.addEventListener('click', () => {
+  fileInput.click();
+});
+
+fileInput.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  
+  if (file.name.endsWith('.json')) {
+    reader.onload = (f) => {
+      try {
+        const json = JSON.parse(f.target.result);
+        isHistoryProcessing = true;
+        canvas.loadFromJSON(json, () => {
+          canvas.renderAll();
+          isHistoryProcessing = false;
+          saveHistory(true);
+          setStatus('Proyecto cargado exitosamente', 'action');
+          btnSelect.click();
+        });
+      } catch (err) {
+        console.error('Error parsing JSON:', err);
+        setStatus('Error al cargar el proyecto', 'action');
+      }
+    };
+    reader.readAsText(file);
+  } else {
+    reader.onload = (f) => {
+      const data = f.target.result;
+      fabric.Image.fromURL(data, (img) => {
+        // Scale down if image is too large
+        if (img.width > canvas.width / 2 || img.height > canvas.height / 2) {
+          img.scaleToWidth(canvas.width / 2);
+        }
+        img.set({
+          left: canvas.width / 2,
+          top: canvas.height / 2,
+          originX: 'center',
+          originY: 'center'
+        });
+        isHistoryProcessing = true;
+        canvas.add(img);
+        canvas.setActiveObject(img);
+        isHistoryProcessing = false;
+        saveHistory();
+        btnSelect.click();
+        setStatus('Imagen importada', 'action');
+      });
+    };
+    reader.readAsDataURL(file);
+  }
+  
+  // Reset input so the same file can be loaded again if needed
+  fileInput.value = '';
 });
 
 // --- Properties Logic ---
