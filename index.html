@@ -35,115 +35,110 @@
       <canvas id="c"></canvas>
     </main>
 
-    <!-- Top Navigation -->
-    <header class="fixed top-4 left-4 right-4 z-10 flex justify-between items-start pointer-events-none">
-      <!-- Brand & Status -->
-      <div class="glass-panel rounded-2xl px-4 py-3 flex flex-col gap-1 pointer-events-auto">
+    <!-- Top Navigation & Properties -->
+    <header class="fixed top-4 left-4 right-4 z-10 glass-panel rounded-2xl px-4 py-2 flex items-center justify-between pointer-events-auto shadow-lg overflow-x-auto scrollbar-hide">
+      
+      <!-- Left: Brand & Status -->
+      <div class="flex items-center gap-4 shrink-0">
         <h1 class="text-lg font-bold text-white tracking-tight flex items-center gap-2">
           <i data-lucide="pen-tool" class="w-5 h-5 text-purple-400"></i>
           App Lápiz
         </h1>
-        <div id="statusIndicator" class="text-xs text-green-400 font-medium flex items-center gap-1.5">
+        <div id="statusIndicator" class="text-xs text-green-400 font-medium flex items-center gap-1.5 hidden lg:flex">
           <div class="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></div>
           Listo
         </div>
       </div>
 
-      <!-- Actions -->
-      <div class="glass-panel rounded-2xl p-1.5 flex items-center gap-1 pointer-events-auto">
-        <button id="btnUndo" class="p-2.5 text-zinc-400 hover:text-white hover:bg-white/10 rounded-xl transition-colors disabled:opacity-30 disabled:hover:bg-transparent" title="Deshacer (Ctrl+Z)">
-          <i data-lucide="undo-2" class="w-5 h-5"></i>
-        </button>
-        <button id="btnRedo" class="p-2.5 text-zinc-400 hover:text-white hover:bg-white/10 rounded-xl transition-colors disabled:opacity-30 disabled:hover:bg-transparent" title="Rehacer (Ctrl+Y)">
-          <i data-lucide="redo-2" class="w-5 h-5"></i>
-        </button>
-        
-        <div class="w-px h-6 bg-white/10 mx-1"></div>
-        
-        <button id="btnNew" class="px-4 py-2 text-sm font-medium text-red-400 hover:text-red-300 hover:bg-red-400/10 rounded-xl transition-colors">
-          Limpiar
-        </button>
-        <button id="btnSave" class="px-4 py-2 text-sm font-medium bg-white text-black hover:bg-gray-200 rounded-xl transition-colors ml-1 shadow-sm flex items-center gap-2">
-          <i data-lucide="download" class="w-4 h-4"></i> Exportar
-        </button>
-      </div>
-    </header>
+      <div class="w-px h-6 bg-white/10 mx-4 shrink-0"></div>
 
-    <!-- Properties Sidebar (Left) -->
-    <aside class="fixed top-24 left-4 z-10 glass-panel rounded-2xl p-4 w-64 pointer-events-auto flex flex-col gap-6">
-      <div class="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Propiedades</div>
-      
-      <!-- Colors -->
-      <div class="flex flex-col gap-4">
-        <div class="flex items-center justify-between">
-          <label for="strokeColor" class="text-sm font-medium text-zinc-300 flex items-center gap-2">
+      <!-- Center: Properties -->
+      <div class="flex items-center gap-6 flex-grow shrink-0 text-sm">
+        
+        <!-- Borde -->
+        <div class="flex items-center gap-2">
+          <label for="strokeColor" class="font-medium text-zinc-300 flex items-center gap-1.5">
             <i data-lucide="palette" class="w-4 h-4"></i> Borde
           </label>
-          <div class="relative w-8 h-8 rounded-full overflow-hidden border-2 border-white/20 shadow-inner">
+          <div class="relative w-7 h-7 rounded-full overflow-hidden border border-white/20">
             <input type="color" id="strokeColor" value="#000000" class="absolute -inset-2 w-12 h-12 cursor-pointer">
           </div>
         </div>
 
-        <div class="flex items-center justify-between">
-          <label for="fillColor" class="text-sm font-medium text-zinc-300 flex items-center gap-2">
+        <!-- Relleno -->
+        <div class="flex items-center gap-2">
+          <label for="fillColor" class="font-medium text-zinc-300 flex items-center gap-1.5">
             <i data-lucide="paint-bucket" class="w-4 h-4"></i> Relleno
           </label>
-          <div class="flex items-center gap-3">
-            <label class="flex items-center gap-1.5 text-xs text-zinc-400 cursor-pointer hover:text-white transition-colors" title="Fondo transparente">
+          <div class="flex items-center gap-2">
+            <label class="flex items-center gap-1 text-xs text-zinc-400 cursor-pointer hover:text-white" title="Transparente">
               <input type="checkbox" id="fillTransparent" checked class="rounded border-zinc-600 bg-zinc-800 text-purple-500 focus:ring-purple-500/50">
               Vacío
             </label>
-            <div class="relative w-8 h-8 rounded-full overflow-hidden border-2 border-white/20 shadow-inner">
+            <div class="relative w-7 h-7 rounded-full overflow-hidden border border-white/20">
               <input type="color" id="fillColor" value="#ffffff" class="absolute -inset-2 w-12 h-12 cursor-pointer disabled:opacity-50">
             </div>
           </div>
         </div>
-      </div>
 
-      <div class="h-px w-full bg-white/10"></div>
-
-      <!-- Stroke Width -->
-      <div id="strokeWidthContainer" class="flex flex-col gap-3">
-        <div class="flex items-center justify-between">
-          <label for="strokeWidth" class="text-sm font-medium text-zinc-300 flex items-center gap-2">
+        <!-- Grosor (Dynamic) -->
+        <div id="strokeWidthContainer" class="flex items-center gap-2">
+          <label for="strokeWidth" class="font-medium text-zinc-300 flex items-center gap-1.5">
             <i data-lucide="scaling" class="w-4 h-4"></i> Grosor
           </label>
-          <span id="strokeWidthVal" class="text-xs font-mono text-zinc-400 bg-black/30 px-2 py-1 rounded-md">3px</span>
+          <input type="range" id="strokeWidth" min="1" max="50" value="3" class="w-24 accent-purple-500 cursor-pointer">
+          <span id="strokeWidthVal" class="text-xs font-mono text-zinc-400 w-8">3px</span>
         </div>
-        <input type="range" id="strokeWidth" min="1" max="50" value="3" class="w-full accent-purple-500 cursor-pointer">
-      </div>
 
-      <!-- Eraser Width -->
-      <div id="eraserWidthContainer" class="hidden flex-col gap-3">
-        <div class="flex items-center justify-between">
-          <label for="eraserWidth" class="text-sm font-medium text-zinc-300 flex items-center gap-2">
+        <!-- Eraser Width (Dynamic) -->
+        <div id="eraserWidthContainer" class="hidden items-center gap-2">
+          <label for="eraserWidth" class="font-medium text-zinc-300 flex items-center gap-1.5">
             <i data-lucide="eraser" class="w-4 h-4"></i> Tamaño Goma
           </label>
-          <span id="eraserWidthVal" class="text-xs font-mono text-zinc-400 bg-black/30 px-2 py-1 rounded-md">30px</span>
+          <input type="range" id="eraserWidth" min="5" max="150" value="30" class="w-24 accent-white cursor-pointer">
+          <span id="eraserWidthVal" class="text-xs font-mono text-zinc-400 w-10">30px</span>
         </div>
-        <input type="range" id="eraserWidth" min="5" max="150" value="30" class="w-full accent-white cursor-pointer">
-      </div>
 
-      <div class="h-px w-full bg-white/10"></div>
+        <div class="w-px h-6 bg-white/10 mx-1 shrink-0"></div>
 
-      <!-- Text Properties -->
-      <div id="textPropsContainer" class="flex flex-col gap-3">
-        <div class="flex items-center justify-between">
-          <label class="text-sm font-medium text-zinc-300 flex items-center gap-2">
-            <i data-lucide="type" class="w-4 h-4"></i> Texto
-          </label>
-          <label class="flex items-center gap-1.5 text-xs text-zinc-400 cursor-pointer hover:text-white transition-colors" title="Si está activo, el lápiz mágico creará texto de este tamaño siempre">
+        <!-- Texto -->
+        <div id="textPropsContainer" class="flex items-center gap-4">
+          <div class="flex items-center gap-2">
+            <label for="textSize" class="font-medium text-zinc-300 flex items-center gap-1.5">
+              <i data-lucide="type" class="w-4 h-4"></i> Texto
+            </label>
+            <input type="range" id="textSize" min="10" max="150" value="40" class="w-24 accent-purple-500 cursor-pointer">
+            <span id="textSizeVal" class="text-xs font-mono text-zinc-400 w-10">40px</span>
+          </div>
+          <label class="flex items-center gap-1.5 text-xs text-zinc-400 cursor-pointer hover:text-white transition-colors" title="Tamaño fijo para el Lápiz Mágico">
             <input type="checkbox" id="fixedTextSize" class="rounded border-zinc-600 bg-zinc-800 text-purple-500 focus:ring-purple-500/50">
-            Tamaño Fijo
+            Fijo
           </label>
         </div>
-        <div class="flex items-center justify-between">
-          <label for="textSize" class="text-xs text-zinc-500">Tamaño</label>
-          <span id="textSizeVal" class="text-xs font-mono text-zinc-400 bg-black/30 px-2 py-1 rounded-md">40px</span>
-        </div>
-        <input type="range" id="textSize" min="10" max="150" value="40" class="w-full accent-purple-500 cursor-pointer">
+
       </div>
-    </aside>
+
+      <div class="w-px h-6 bg-white/10 mx-4 shrink-0"></div>
+
+      <!-- Right: Actions -->
+      <div class="flex items-center gap-1 shrink-0">
+        <button id="btnUndo" class="p-2 text-zinc-400 hover:text-white hover:bg-white/10 rounded-xl transition-colors disabled:opacity-30 disabled:hover:bg-transparent" title="Deshacer (Ctrl+Z)">
+          <i data-lucide="undo-2" class="w-4 h-4"></i>
+        </button>
+        <button id="btnRedo" class="p-2 text-zinc-400 hover:text-white hover:bg-white/10 rounded-xl transition-colors disabled:opacity-30 disabled:hover:bg-transparent" title="Rehacer (Ctrl+Y)">
+          <i data-lucide="redo-2" class="w-4 h-4"></i>
+        </button>
+        
+        <div class="w-px h-6 bg-white/10 mx-2"></div>
+        
+        <button id="btnNew" class="px-3 py-1.5 text-sm font-medium text-red-400 hover:text-red-300 hover:bg-red-400/10 rounded-xl transition-colors">
+          Limpiar
+        </button>
+        <button id="btnSave" class="px-3 py-1.5 text-sm font-medium bg-white text-black hover:bg-gray-200 rounded-xl transition-colors ml-1 shadow-sm flex items-center gap-1.5">
+          <i data-lucide="download" class="w-3 h-3"></i> Exportar
+        </button>
+      </div>
+    </header>
 
     <!-- Main Toolbar Dock (Bottom Center) -->
     <div class="fixed bottom-6 left-1/2 -translate-x-1/2 z-20 pointer-events-none">
