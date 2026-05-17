@@ -79,9 +79,13 @@ async function recognizeHandwriting(strokes, language = 'es') {
 
   console.log('Enviando strokes:', JSON.stringify(payload));
 
-  const response = await fetch(
-    '/api/handwriting?ime=handwriting&app=mobilesearch&cs=1&oe=UTF-8',
-    {
+  // En desarrollo usa el proxy de Vite (/api/handwriting → inputtools.google.com)
+  // En producción (Webempresa) usa el archivo PHP que hace el mismo proxy
+  const handwritingUrl = import.meta.env.DEV
+    ? '/api/handwriting?ime=handwriting&app=mobilesearch&cs=1&oe=UTF-8'
+    : '/handwriting.php';
+
+  const response = await fetch(handwritingUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
